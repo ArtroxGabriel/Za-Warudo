@@ -2,7 +2,7 @@ using ZaWarudo.Model;
 
 namespace ZaWarudo.Tests.Unit.Models;
 
-public class LogRecordTests
+public class DataRecordTests
 {
     [Fact]
     public void LogRecord_CanBeCreatedWithValidParameters()
@@ -12,7 +12,7 @@ public class LogRecordTests
         const uint tsRead = 1000u;
         const uint tsWrite = 2000u;
         // Act
-        var logRecord = new LogRecord(transactionId, tsRead, tsWrite);
+        var logRecord = new DataRecord(transactionId, tsRead, tsWrite);
 
         // Assert
         Assert.NotNull(logRecord);
@@ -22,7 +22,7 @@ public class LogRecordTests
     public void IsReadable_ReturnsTrue_WhenTransactionTimestampIsGreaterThanOrEqualToWriteTimestamp()
     {
         // Arrange
-        var logRecord = new LogRecord("tx123", 1000u, 2000u);
+        var logRecord = new DataRecord("tx123", 1000u, 2000u);
         var transaction = new TransactionRecord("tx456") { Ts = 2000u };
 
         // Act
@@ -36,7 +36,7 @@ public class LogRecordTests
     public void IsReadable_ReturnsFalse_WhenTransactionTimestampIsLessThanWriteTimestamp()
     {
         // Arrange
-        var logRecord = new LogRecord("tx123", 1000u, 2000u);
+        var logRecord = new DataRecord("tx123", 1000u, 2000u);
         var transaction = new TransactionRecord("tx456") { Ts = 1500u };
 
         // Act
@@ -50,7 +50,7 @@ public class LogRecordTests
     public void IsWritable_ReturnsTrue_WhenTransactionTimestampIsGreaterThanOrEqualToReadAndWriteTimestamps()
     {
         // Arrange
-        var logRecord = new LogRecord("tx123", 1000u, 2000u);
+        var logRecord = new DataRecord("tx123", 1000u, 2000u);
         var transaction = new TransactionRecord("tx456") { Ts = 2000u };
 
         // Act
@@ -64,7 +64,7 @@ public class LogRecordTests
     public void IsWritable_ReturnsFalse_WhenTransactionTimestampIsLessThanReadOrWriteTimestamps()
     {
         // Arrange
-        var logRecord = new LogRecord("tx123", 1000u, 2000u);
+        var logRecord = new DataRecord("tx123", 1000u, 2000u);
         var transaction = new TransactionRecord("tx456") { Ts = 1500u };
 
         // Act
@@ -78,7 +78,7 @@ public class LogRecordTests
     public void SetTsRead_UpdatesReadTimestamp_WhenNewTimestampIsGreater()
     {
         // Arrange
-        var logRecord = new LogRecord("tx123", 1000u, 2000u);
+        var logRecord = new DataRecord("tx123", 1000u, 2000u);
 
         // Act
         logRecord.SetTsRead(1500u);
@@ -91,7 +91,7 @@ public class LogRecordTests
     public void SetTsRead_DoesNotUpdateReadTimestamp_WhenNewTimestampIsLessThanOrEqual()
     {
         // Arrange
-        var logRecord = new LogRecord("tx123", 1000u, 2000u);
+        var logRecord = new DataRecord("tx123", 1000u, 2000u);
 
         // Act
         logRecord.SetTsRead(1000u);
@@ -104,7 +104,7 @@ public class LogRecordTests
     public void ResetRecord_SetsTimestampsToZero()
     {
         // Arrange
-        var logRecord = new LogRecord("tx123", 1000u, 2000u);
+        var logRecord = new DataRecord("tx123", 1000u, 2000u);
 
         // Act
         logRecord.ResetRecord();

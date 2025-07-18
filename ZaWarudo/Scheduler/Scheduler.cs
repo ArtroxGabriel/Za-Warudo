@@ -7,22 +7,22 @@ public class Scheduler : IScheduler
 {
     private readonly ILogger _logger = Log.ForContext<Scheduler>();
 
-    private List<Operation> _operations;
-    // E_3-r3(X) w3(Y) c1 r1(X) w1(Y) c2 r2(Y) w2(Z) c3
+    private List<Operation> _operations = new();
 
     private string _scheduleId { get; set; } = string.Empty;
 
-    public Dictionary<string, LogRecord> _logRecords { get; set; } = new();
+    private Dictionary<string, DataRecord> _dataRecords { get; set; } = new();
 
-    public Dictionary<string, TransactionRecord> _transaction { get; set; } = new();
+    private Dictionary<string, TransactionRecord> _transactions { get; set; } = new();
+
 
     public Task<Result<Unit, SchedulerError>> InitializeAsync()
     {
         _logger.Debug("Initializing scheduler...");
 
         _operations = [];
-        _logRecords = [];
-        _transaction = [];
+        _dataRecords = [];
+        _transactions = [];
 
         _logger.Information("Scheduler initialized successfully");
         return Task.FromResult(Result<Unit, SchedulerError>.Success(Unit.Value));
@@ -46,7 +46,7 @@ public class Scheduler : IScheduler
     {
         _logger.Debug("Resetting timestamps for log records...");
 
-        _logRecords.ToList().ForEach(record => record.Value.ResetRecord());
+        _dataRecords.ToList().ForEach(record => record.Value.ResetRecord());
         _operations = [];
 
         _logger.Information("Timestamps for log records reset successfully");
@@ -57,8 +57,10 @@ public class Scheduler : IScheduler
     {
         _logger.Debug("Checking if schedule {ScheduleId} is serializable", _scheduleId);
 
+        var scheduleTime = 0u;
         foreach (var op in _operations)
         {
+            scheduleTime++;
             bool result;
             switch (op.OperationType)
             {
@@ -73,6 +75,7 @@ public class Scheduler : IScheduler
                     }
 
                     result = readResult.GetValueOrThrow();
+
                     break;
                 case OperationType.Write:
                     var writeResult = CheckIfIsWritable(op.TransactionId, op.DataId);
@@ -94,11 +97,19 @@ public class Scheduler : IScheduler
 
             if (result == false)
             {
-                // registrar uma marca ̧c ̃ao “ROLLBACK” de re-inicialização de transação, juntamente com o seu “momento” como definido abaixo.
-                var schedulerResult = _scheduleId + "-ROLLBACK-" + 0;
+                var schedulerResult = _scheduleId + "-ROLLBACK-" + scheduleTime;
 
-                _logger.Information("The schedule {ScheduleId} is not serializable, rolling back", _scheduleId);
+                _logger.Information("The schedule {ScheduleId} is not serializable, rolling back at {scheduleTime}", _scheduleId, scheduleTime);
                 return Task.FromResult(Result<string, SchedulerError>.Success(schedulerResult));
+            }
+
+            var updateResult = UpdateRecordTimeStamp(op.OperationType, op.TransactionId, op.DataId);
+            if (updateResult.IsError)
+            {
+                _logger.Error(
+                    "Failed to update timestamp for operation {OperationType} on transaction {TransactionId} and data {DataId}",
+                    op.OperationType, op.TransactionId, op.DataId);
+                return Task.FromResult(Result<string, SchedulerError>.Error(updateResult.GetErrorOrThrow()));
             }
         }
 
@@ -108,48 +119,105 @@ public class Scheduler : IScheduler
         return Task.FromResult(Result<string, SchedulerError>.Success(scheduleResult));
     }
 
-    private Result<bool, SchedulerError> CheckIfIsReadable(string transactionId, string logRecordId)
+    public Task<Result<List<DataRecord>, SchedulerError>> GetDataRecords()
     {
-        if (!_transaction.TryGetValue(transactionId, out var transactionRecord))
+        var list = _dataRecords.ToList().Select(dr => dr.Value).ToList();
+
+        return Task.FromResult(Result<List<DataRecord>, SchedulerError>.Success(list));
+    }
+
+    public Task<Result<Unit, SchedulerError>> SetDataRecordsAsync(Dictionary<string, DataRecord> dataRecords)
+    {
+        _dataRecords = dataRecords;
+
+        return Task.FromResult(Result<Unit, SchedulerError>.Success(Unit.Value));
+    }
+
+    public Task<Result<Unit, SchedulerError>> SetTransactionAsync(Dictionary<string, TransactionRecord> transaction)
+    {
+        _transactions = transaction;
+
+        return Task.FromResult(Result<Unit, SchedulerError>.Success(Unit.Value));
+    }
+
+    private Result<bool, SchedulerError> CheckIfIsReadable(string transactionId, string dataRecordId)
+    {
+        if (!_transactions.TryGetValue(transactionId, out var transactionRecord))
         {
             _logger.Error("Transaction {TransactionId} not found for read operation", transactionId);
             return Result<bool, SchedulerError>.Error(
                 new SchedulerError($"Transaction {transactionId} not found"));
         }
 
-        if (!_logRecords.TryGetValue(logRecordId, out var logRecord))
+        if (!_dataRecords.TryGetValue(dataRecordId, out var dataRecord))
         {
-            _logger.Error("Log Record {logRecord} not found for read operation", logRecordId);
+            _logger.Error("Log Record {logRecord} not found for read operation", dataRecordId);
             return Result<bool, SchedulerError>.Error(
                 new SchedulerError($"Transaction {transactionId} not found"));
         }
 
 
-        var isReadable = logRecord.IsReadable(transactionRecord);
+        var isReadable = dataRecord.IsReadable(transactionRecord);
 
         return Result<bool, SchedulerError>.Success(isReadable);
     }
 
 
-    private Result<bool, SchedulerError> CheckIfIsWritable(string transactionId, string logRecordId)
+    private Result<bool, SchedulerError> CheckIfIsWritable(string transactionId, string dataRecordId)
     {
-        if (!_transaction.TryGetValue(transactionId, out var transactionRecord))
+        if (!_transactions.TryGetValue(transactionId, out var transactionRecord))
         {
             _logger.Error("Transaction {TransactionId} not found for write operation", transactionId);
             return Result<bool, SchedulerError>.Error(
                 new SchedulerError($"Transaction {transactionId} not found"));
         }
 
-        if (!_logRecords.TryGetValue(logRecordId, out var logRecord))
+        if (!_dataRecords.TryGetValue(dataRecordId, out var dataRecord))
         {
-            _logger.Error("Log Record {logRecord} not found for write operation", logRecordId);
+            _logger.Error("Log Record {logRecord} not found for write operation", dataRecordId);
             return Result<bool, SchedulerError>.Error(
                 new SchedulerError($"Transaction {transactionId} not found"));
         }
 
 
-        var isReadable = logRecord.IsWritable(transactionRecord);
+        var isReadable = dataRecord.IsWritable(transactionRecord);
 
         return Result<bool, SchedulerError>.Success(isReadable);
+    }
+
+    private Result<Unit, SchedulerError> UpdateRecordTimeStamp(OperationType operationType,
+        string transactionId, string dataRecordId)
+    {
+        if (operationType == OperationType.Commit)
+        {
+            _logger.Debug("No timestamp update needed for commit operation");
+            return Result<Unit, SchedulerError>.Success(Unit.Value);
+        }
+
+        if (!_transactions.TryGetValue(transactionId, out var transactionRecord))
+        {
+            _logger.Error("Transaction {TransactionId} not found for write operation", transactionId);
+            return Result<Unit, SchedulerError>.Error(
+                new SchedulerError($"Transaction {transactionId} not found"));
+        }
+
+        if (!_dataRecords.TryGetValue(dataRecordId, out var logRecord))
+        {
+            _logger.Error("Log Record {logRecord} not found for write operation", dataRecordId);
+            return Result<Unit, SchedulerError>.Error(
+                new SchedulerError($"Transaction {transactionId} not found"));
+        }
+
+        switch (operationType)
+        {
+            case OperationType.Read:
+                logRecord.SetTsRead(transactionRecord.Ts);
+                break;
+            case OperationType.Write:
+                logRecord.SetTsWrite(transactionRecord.Ts);
+                break;
+        }
+
+        return Result<Unit, SchedulerError>.Success(Unit.Value);
     }
 }

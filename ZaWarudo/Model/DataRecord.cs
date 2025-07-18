@@ -1,15 +1,20 @@
 namespace ZaWarudo.Model;
 
-public class LogRecord(string idData, uint tsRead, uint tsWrite)
+public class DataRecord(string id, uint tsRead, uint tsWrite)
 {
-    public LogRecord() : this(string.Empty, 0, 0)
+    public DataRecord()
+        : this(string.Empty, 0, 0)
     {
     }
 
-    private string IdData { get; init; } = idData;
+    public DataRecord(string id)
+        : this(id, 0, 0)
+    {
+    }
+
+    public string Id { get; init; } = id;
     public uint TsRead { get; set; } = tsRead;
     public uint TsWrite { get; set; } = tsWrite;
-
 
     public bool IsReadable(TransactionRecord tx)
     {
@@ -23,7 +28,8 @@ public class LogRecord(string idData, uint tsRead, uint tsWrite)
 
     public void SetTsRead(uint ts)
     {
-        if (TsRead < ts) TsRead = ts;
+        if (TsRead < ts)
+            TsRead = ts;
     }
 
     public void SetTsWrite(uint ts)
@@ -31,10 +37,15 @@ public class LogRecord(string idData, uint tsRead, uint tsWrite)
         TsWrite = ts;
     }
 
-
-    public virtual void ResetRecord()
+    public void ResetRecord()
     {
         TsRead = 0;
         TsWrite = 0;
+    }
+
+    public override string ToString()
+    {
+        // <ID-dado, TS-Read, TS-Write>
+        return $"<{Id}, {TsRead}, {TsWrite}>";
     }
 }

@@ -57,8 +57,6 @@ public class SchedulerTests
         // Assert
         Assert.True(resetResult.IsSuccess);
 
-        // To verify the reset, we can now set a new schedule.
-        // If the scheduler was not reset, this might fail depending on its internal logic.
         var newOperations = new List<Operation> { new(OperationType.Write, "T2", "Y") };
         var newScheduleResult = await _scheduler.SetScheduleAsync("S2", newOperations);
         Assert.True(newScheduleResult.IsSuccess);
