@@ -24,13 +24,13 @@ public partial class CheckIfSerializableTests
     {
         // Arrange
         var scheduler = new ZaWarudo.Scheduler.Scheduler();
-        var (scheduleId, operations) = ParseSchedule(scheduleString);
+        var schedulePlan = ParseSchedule(scheduleString);
         var transactions = CreateTransactionRecords(transactionsString, timestampsString);
         var dataRecords = CreateDataRecords(dataRecordsString);
 
-        await scheduler.SetTransactionAsync(transactions);
-        await scheduler.SetDataRecordsAsync(dataRecords);
-        await scheduler.SetScheduleAsync(scheduleId, operations);
+        scheduler.SetTransaction(transactions);
+        scheduler.SetDataRecords(dataRecords);
+        await scheduler.SetScheduleAsync(schedulePlan);
 
         // Act
         var result = await scheduler.CheckIfSerializableAsync();
@@ -43,7 +43,7 @@ public partial class CheckIfSerializableTests
         Log.Debug("Data Records: {DataRecords}", string.Join(", ", dataRecords.Values.Select(d => d.ToString())));
     }
 
-    private static (string scheduleId, List<Operation> operations) ParseSchedule(string scheduleString)
+    private static SchedulePlan ParseSchedule(string scheduleString)
     {
         var parts = scheduleString.Split('-', 2);
         var scheduleId = parts[0];
@@ -70,7 +70,7 @@ public partial class CheckIfSerializableTests
             operations.Add(new Operation(type, transactionId, dataId));
         }
 
-        return (scheduleId, operations);
+        return new SchedulePlan(scheduleId, operations);
     }
 
     private static Dictionary<string, TransactionRecord> CreateTransactionRecords(string transactionsString,
@@ -82,7 +82,7 @@ public partial class CheckIfSerializableTests
         if (transactionIds.Length != timestamps.Length)
             throw new ArgumentException("Transaction and timestamp counts do not match.");
 
-        return transactionIds.Zip(timestamps, (id, ts) => new TransactionRecord(id) { Ts = ts })
+        return transactionIds.Zip(timestamps, (id, ts) => new TransactionRecord(id, ts))
             .ToDictionary(t => t.Id, t => t);
     }
 

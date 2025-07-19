@@ -28,16 +28,15 @@ public class Scheduler : IScheduler
         return Task.FromResult(Result<Unit, SchedulerError>.Success(Unit.Value));
     }
 
-    public Task<Result<Unit, SchedulerError>> SetScheduleAsync(string scheduleId, List<Operation> operations
-    )
+    public Task<Result<Unit, SchedulerError>> SetScheduleAsync(SchedulePlan schedulePlan)
     {
         _logger.Debug("Setting schedule with ID {ScheduleId} and operations count {OperationsCount}",
-            scheduleId, operations.Count);
-        _scheduleId = scheduleId;
-        _operations = operations;
+            schedulePlan.ScheduleId, schedulePlan.Operations.Count);
+        _scheduleId = schedulePlan.ScheduleId;
+        _operations = schedulePlan.Operations;
 
         _logger.Information("Schedule {ScheduleId} set with {OperationsCount} operations",
-            scheduleId, operations.Count);
+            schedulePlan.ScheduleId, schedulePlan.Operations.Count);
         return Task.FromResult(Result<Unit, SchedulerError>.Success(Unit.Value));
     }
 
@@ -99,7 +98,8 @@ public class Scheduler : IScheduler
             {
                 var schedulerResult = _scheduleId + "-ROLLBACK-" + scheduleTime;
 
-                _logger.Information("The schedule {ScheduleId} is not serializable, rolling back at {scheduleTime}", _scheduleId, scheduleTime);
+                _logger.Information("The schedule {ScheduleId} is not serializable, rolling back at {scheduleTime}",
+                    _scheduleId, scheduleTime);
                 return Task.FromResult(Result<string, SchedulerError>.Success(schedulerResult));
             }
 
@@ -126,18 +126,18 @@ public class Scheduler : IScheduler
         return Task.FromResult(Result<List<DataRecord>, SchedulerError>.Success(list));
     }
 
-    public Task<Result<Unit, SchedulerError>> SetDataRecordsAsync(Dictionary<string, DataRecord> dataRecords)
+    public Result<Unit, SchedulerError> SetDataRecords(Dictionary<string, DataRecord> dataRecords)
     {
         _dataRecords = dataRecords;
 
-        return Task.FromResult(Result<Unit, SchedulerError>.Success(Unit.Value));
+        return Result<Unit, SchedulerError>.Success(Unit.Value);
     }
 
-    public Task<Result<Unit, SchedulerError>> SetTransactionAsync(Dictionary<string, TransactionRecord> transaction)
+    public Result<Unit, SchedulerError> SetTransaction(Dictionary<string, TransactionRecord> transaction)
     {
         _transactions = transaction;
 
-        return Task.FromResult(Result<Unit, SchedulerError>.Success(Unit.Value));
+        return Result<Unit, SchedulerError>.Success(Unit.Value);
     }
 
     private Result<bool, SchedulerError> CheckIfIsReadable(string transactionId, string dataRecordId)

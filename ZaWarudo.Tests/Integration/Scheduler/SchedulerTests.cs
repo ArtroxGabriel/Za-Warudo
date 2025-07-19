@@ -32,11 +32,13 @@ public class SchedulerTests
             )
         };
 
+        var schedulePlan = new SchedulePlan(scheduleId, operations);
+
 
         var _scheduler = new ZaWarudo.Scheduler.Scheduler();
 
         // Act
-        var result = await _scheduler.SetScheduleAsync(scheduleId, operations);
+        var result = await _scheduler.SetScheduleAsync(schedulePlan);
 
         // Assert
         Assert.True(result.IsSuccess);
@@ -48,8 +50,9 @@ public class SchedulerTests
         // Arrange
         var _scheduler = new ZaWarudo.Scheduler.Scheduler();
         var initialOperations = new List<Operation> { new(OperationType.Read, "T1", "X") };
+        var initialSchedulePlan = new SchedulePlan("S1", initialOperations);
 
-        await _scheduler.SetScheduleAsync("S1", initialOperations);
+        await _scheduler.SetScheduleAsync(initialSchedulePlan);
 
         // Act
         var resetResult = await _scheduler.ResetScheduler();
@@ -58,7 +61,8 @@ public class SchedulerTests
         Assert.True(resetResult.IsSuccess);
 
         var newOperations = new List<Operation> { new(OperationType.Write, "T2", "Y") };
-        var newScheduleResult = await _scheduler.SetScheduleAsync("S2", newOperations);
+        var newSchedulePlan = new SchedulePlan("S2", newOperations);
+        var newScheduleResult = await _scheduler.SetScheduleAsync(newSchedulePlan);
         Assert.True(newScheduleResult.IsSuccess);
     }
 }
