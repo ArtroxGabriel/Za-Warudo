@@ -1,8 +1,8 @@
 namespace ZaWarudo.Model;
 
-public readonly struct Operation(OperationType operationType, string transactionId, string dataId)
+public readonly struct Operation(OperationType type, string transactionId, string dataId)
 {
-    public readonly OperationType OperationType { get; } = operationType;
+    public readonly OperationType Type { get; } = type;
     public readonly string TransactionId { get; } = transactionId;
     public readonly string DataId { get; } = dataId;
 }

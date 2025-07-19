@@ -23,7 +23,7 @@ public class DataRecordTests
     {
         // Arrange
         var logRecord = new DataRecord("tx123", 1000u, 2000u);
-        var transaction = new TransactionRecord("tx456") { Ts = 2000u };
+        var transaction = new TransactionRecord("tx456") { Timestamp = 2000u };
 
         // Act
         var result = logRecord.IsReadable(transaction);
@@ -37,7 +37,7 @@ public class DataRecordTests
     {
         // Arrange
         var logRecord = new DataRecord("tx123", 1000u, 2000u);
-        var transaction = new TransactionRecord("tx456") { Ts = 1500u };
+        var transaction = new TransactionRecord("tx456") { Timestamp = 1500u };
 
         // Act
         var result = logRecord.IsReadable(transaction);
@@ -51,7 +51,7 @@ public class DataRecordTests
     {
         // Arrange
         var logRecord = new DataRecord("tx123", 1000u, 2000u);
-        var transaction = new TransactionRecord("tx456") { Ts = 2000u };
+        var transaction = new TransactionRecord("tx456") { Timestamp = 2000u };
 
         // Act
         var result = logRecord.IsWritable(transaction);
@@ -65,7 +65,7 @@ public class DataRecordTests
     {
         // Arrange
         var logRecord = new DataRecord("tx123", 1000u, 2000u);
-        var transaction = new TransactionRecord("tx456") { Ts = 1500u };
+        var transaction = new TransactionRecord("tx456") { Timestamp = 1500u };
 
         // Act
         var result = logRecord.IsWritable(transaction);

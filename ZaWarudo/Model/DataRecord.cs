@@ -18,12 +18,12 @@ public class DataRecord(string id, uint tsRead, uint tsWrite)
 
     public bool IsReadable(TransactionRecord tx)
     {
-        return !(tx.Ts < TsWrite);
+        return !(tx.Timestamp < TsWrite);
     }
 
     public bool IsWritable(TransactionRecord tx)
     {
-        return !(tx.Ts < TsRead || tx.Ts < TsWrite);
+        return !(tx.Timestamp < TsRead || tx.Timestamp < TsWrite);
     }
 
     public void SetTsRead(uint ts)
