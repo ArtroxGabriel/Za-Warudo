@@ -1,0 +1,6 @@
+X, Y, Z;
+t1, t2, t3;
+5, 10, 3;
+E_1-r1(X) r2(Y) w2(Y) r3(Y) w1(X) c1
+E_2-w2(X) r1(Y) w3(X) r2(Z) w1(Z) c1
+E_3-r3(X) w3(Y) c1 r1(X) w1(Y) c2 r2(Y) w2(Z) c3
