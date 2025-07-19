@@ -1,9 +1,11 @@
 using System.Text.RegularExpressions;
+using JetBrains.Annotations;
 using Serilog;
 using ZaWarudo.Model;
 
 namespace ZaWarudo.Tests.Integration.Scheduler;
 
+[TestSubject(typeof(ZaWarudo.Scheduler.Scheduler))]
 public partial class CheckIfSerializableTests
 {
     public CheckIfSerializableTests()

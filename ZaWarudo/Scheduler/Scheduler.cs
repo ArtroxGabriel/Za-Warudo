@@ -61,7 +61,7 @@ public class Scheduler : IScheduler
         {
             scheduleTime++;
             bool result;
-            switch (op.OperationType)
+            switch (op.Type)
             {
                 case OperationType.Read:
                     var readResult = CheckIfIsReadable(op.TransactionId, op.DataId);
@@ -103,12 +103,12 @@ public class Scheduler : IScheduler
                 return Task.FromResult(Result<string, SchedulerError>.Success(schedulerResult));
             }
 
-            var updateResult = UpdateRecordTimeStamp(op.OperationType, op.TransactionId, op.DataId);
+            var updateResult = UpdateRecordTimeStamp(op.Type, op.TransactionId, op.DataId);
             if (updateResult.IsError)
             {
                 _logger.Error(
                     "Failed to update timestamp for operation {OperationType} on transaction {TransactionId} and data {DataId}",
-                    op.OperationType, op.TransactionId, op.DataId);
+                    op.Type, op.TransactionId, op.DataId);
                 return Task.FromResult(Result<string, SchedulerError>.Error(updateResult.GetErrorOrThrow()));
             }
         }
@@ -211,10 +211,10 @@ public class Scheduler : IScheduler
         switch (operationType)
         {
             case OperationType.Read:
-                logRecord.SetTsRead(transactionRecord.Ts);
+                logRecord.SetTsRead(transactionRecord.Timestamp);
                 break;
             case OperationType.Write:
-                logRecord.SetTsWrite(transactionRecord.Ts);
+                logRecord.SetTsWrite(transactionRecord.Timestamp);
                 break;
         }
 

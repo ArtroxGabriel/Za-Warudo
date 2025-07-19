@@ -1,10 +1,14 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace ZaWarudo.Model;
 
 public readonly struct Result<TValue, TError>
 {
-    private readonly TValue _value;
-    private readonly TError _error;
+    private readonly TValue? _value;
+    private readonly TError? _error;
 
+    [MemberNotNullWhen(true, nameof(_value))]
+    [MemberNotNullWhen(false, nameof(_error))]
     public readonly bool IsSuccess { get; }
 
     public readonly bool IsError => !IsSuccess;
