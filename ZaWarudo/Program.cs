@@ -27,8 +27,7 @@ internal static class Program
 
             var outputOption = new Option<string>(
                 "--output",
-                "Path to the output file where results will be saved")
-            { Arity = ArgumentArity.ZeroOrOne };
+                "Path to the output file where results will be saved") { Arity = ArgumentArity.ZeroOrOne };
             outputOption.SetDefaultValue("ZaWarudo/Data/out.txt");
             rootCommand.AddOption(outputOption);
 

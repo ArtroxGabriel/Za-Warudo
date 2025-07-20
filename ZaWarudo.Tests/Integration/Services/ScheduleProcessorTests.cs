@@ -17,6 +17,7 @@ public class ScheduleProcessorTests
             .WriteTo.Console()
             .CreateLogger();
     }
+
     [Fact]
     public async Task ProcessScheduleAsync_SuccessfulProcessing_WritesCorrectOutput()
     {
@@ -24,26 +25,23 @@ public class ScheduleProcessorTests
         var mockScheduler = new Mock<IScheduler>();
 
         mockScheduler.Setup(s => s.SetScheduleAsync(It.IsAny<SchedulePlan>()))
-                     .ReturnsAsync(Result<Model.Unit, SchedulerError>.Success(Model.Unit.Value));
+            .ReturnsAsync(Result<Model.Unit, SchedulerError>.Success(Model.Unit.Value));
 
         mockScheduler.SetupSequence(s => s.CheckIfSerializableAsync())
-                     .ReturnsAsync(Result<string, SchedulerError>.Success("Result for S1"))
-                     .ReturnsAsync(Result<string, SchedulerError>.Success("Result for S2"));
+            .ReturnsAsync(Result<string, SchedulerError>.Success("Result for S1"))
+            .ReturnsAsync(Result<string, SchedulerError>.Success("Result for S2"));
 
         mockScheduler.Setup(s => s.ResetScheduler())
-                     .ReturnsAsync(Result<Model.Unit, SchedulerError>.Success(Model.Unit.Value));
+            .ReturnsAsync(Result<Model.Unit, SchedulerError>.Success(Model.Unit.Value));
 
         var schedulePlans = new List<SchedulePlan>
-            {
-                new("S1", new List<Operation> { new(OperationType.Read, "T1", "A") }),
-                new("S2", new List<Operation> { new(OperationType.Write, "T2", "B") })
-            };
+        {
+            new("S1", new List<Operation> { new(OperationType.Read, "T1", "A") }),
+            new("S2", new List<Operation> { new(OperationType.Write, "T2", "B") })
+        };
 
         const string outputPath = "test_output_successful.txt";
-        if (File.Exists(outputPath))
-        {
-            File.Delete(outputPath);
-        }
+        if (File.Exists(outputPath)) File.Delete(outputPath);
 
         var processor = new ScheduleProcessor(mockScheduler.Object);
 
@@ -71,10 +69,7 @@ public class ScheduleProcessorTests
         finally
         {
             // Clean up: Delete the test output file
-            if (File.Exists(outputPath))
-            {
-                File.Delete(outputPath);
-            }
+            if (File.Exists(outputPath)) File.Delete(outputPath);
         }
     }
 
@@ -84,20 +79,20 @@ public class ScheduleProcessorTests
         // Arrange
         var mockScheduler = new Mock<IScheduler>();
         mockScheduler.Setup(s => s.SetScheduleAsync(It.IsAny<SchedulePlan>()))
-                     .ReturnsAsync(Result<Model.Unit, SchedulerError>.Success(Model.Unit.Value));
+            .ReturnsAsync(Result<Model.Unit, SchedulerError>.Success(Model.Unit.Value));
         mockScheduler.Setup(s => s.CheckIfSerializableAsync())
-                     .ReturnsAsync(Result<string, SchedulerError>.Success("New content"));
+            .ReturnsAsync(Result<string, SchedulerError>.Success("New content"));
         mockScheduler.Setup(s => s.ResetScheduler())
-                     .ReturnsAsync(Result<Model.Unit, SchedulerError>.Success(Model.Unit.Value));
+            .ReturnsAsync(Result<Model.Unit, SchedulerError>.Success(Model.Unit.Value));
 
         var outputPath = "test_output_overwrite.txt";
         // Crie o arquivo com conteúdo antigo para simular que ele já existe
         await File.WriteAllTextAsync(outputPath, "Old content that should be overwritten.");
 
         var schedulePlans = new List<SchedulePlan>
-                {
-                    new("S1", new List<Operation> { new(OperationType.Read, "T1", "A") })
-                };
+        {
+            new("S1", new List<Operation> { new(OperationType.Read, "T1", "A") })
+        };
 
         var processor = new ScheduleProcessor(mockScheduler.Object);
 
@@ -117,10 +112,7 @@ public class ScheduleProcessorTests
         finally
         {
             // Clean up
-            if (File.Exists(outputPath))
-            {
-                File.Delete(outputPath);
-            }
+            if (File.Exists(outputPath)) File.Delete(outputPath);
         }
     }
 
@@ -131,17 +123,16 @@ public class ScheduleProcessorTests
         var mockScheduler = new Mock<IScheduler>();
         // Simula uma falha em SetScheduleAsync para o primeiro plano
         mockScheduler.Setup(s => s.SetScheduleAsync(It.IsAny<SchedulePlan>()))
-                     .ReturnsAsync(Result<Model.Unit, SchedulerError>.Error(new SchedulerError("Set schedule failed")));
+            .ReturnsAsync(Result<Model.Unit, SchedulerError>.Error(new SchedulerError("Set schedule failed")));
         // Garante que CheckIfSerializableAsync e ResetScheduler NÃO são chamados após a falha
         mockScheduler.Setup(s => s.CheckIfSerializableAsync()).Verifiable(Times.Never());
         mockScheduler.Setup(s => s.ResetScheduler()).Verifiable(Times.Never());
 
 
         var schedulePlans = new List<SchedulePlan>
-                {
-                    new("S1", new List<Operation>()),
-                    new("S2", new List<Operation>()) // Este plano não deve ser processado
-                };
+        {
+            new("S1", new List<Operation>()), new("S2", new List<Operation>()) // Este plano não deve ser processado
+        };
         var outputPath = "test_output_set_schedule_fail.txt";
         if (File.Exists(outputPath)) File.Delete(outputPath);
 
@@ -178,18 +169,17 @@ public class ScheduleProcessorTests
         // Arrange
         var mockScheduler = new Mock<IScheduler>();
         mockScheduler.Setup(s => s.SetScheduleAsync(It.IsAny<SchedulePlan>()))
-                     .ReturnsAsync(Result<Model.Unit, SchedulerError>.Success(Model.Unit.Value));
+            .ReturnsAsync(Result<Model.Unit, SchedulerError>.Success(Model.Unit.Value));
         // Simula uma falha em CheckIfSerializableAsync para o primeiro plano
         mockScheduler.Setup(s => s.CheckIfSerializableAsync())
-                     .ReturnsAsync(Result<string, SchedulerError>.Error(new SchedulerError("Serialization check failed")));
+            .ReturnsAsync(Result<string, SchedulerError>.Error(new SchedulerError("Serialization check failed")));
         // Garante que ResetScheduler NÃO é chamado após a falha
         mockScheduler.Setup(s => s.ResetScheduler()).Verifiable(Times.Never());
 
         var schedulePlans = new List<SchedulePlan>
-                {
-                    new("S1", new List<Operation>()),
-                    new("S2", new List<Operation>()) // Este plano não deve ser processado
-                };
+        {
+            new("S1", new List<Operation>()), new("S2", new List<Operation>()) // Este plano não deve ser processado
+        };
         var outputPath = "test_output_serializable_fail.txt";
         if (File.Exists(outputPath)) File.Delete(outputPath);
 
@@ -210,8 +200,10 @@ public class ScheduleProcessorTests
             Assert.Empty(outputContent); // Nenhuma saída deve ser escrita
 
             mockScheduler.Verify(s => s.ResetScheduler(), Times.Never());
-            mockScheduler.Verify(s => s.SetScheduleAsync(It.IsAny<SchedulePlan>()), Times.Once()); // SetScheduleAsync foi chamado
-            mockScheduler.Verify(s => s.CheckIfSerializableAsync(), Times.Once()); // CheckIfSerializableAsync foi chamado uma vez
+            mockScheduler.Verify(s => s.SetScheduleAsync(It.IsAny<SchedulePlan>()),
+                Times.Once()); // SetScheduleAsync foi chamado
+            mockScheduler.Verify(s => s.CheckIfSerializableAsync(),
+                Times.Once()); // CheckIfSerializableAsync foi chamado uma vez
         }
         finally
         {
@@ -225,19 +217,18 @@ public class ScheduleProcessorTests
         // Arrange
         var mockScheduler = new Mock<IScheduler>();
         mockScheduler.Setup(s => s.SetScheduleAsync(It.IsAny<SchedulePlan>()))
-                     .ReturnsAsync(Result<Model.Unit, SchedulerError>.Success(Model.Unit.Value));
+            .ReturnsAsync(Result<Model.Unit, SchedulerError>.Success(Model.Unit.Value));
         mockScheduler.Setup(s => s.CheckIfSerializableAsync())
-                     .ReturnsAsync(Result<string, SchedulerError>.Success("Some result"));
+            .ReturnsAsync(Result<string, SchedulerError>.Success("Some result"));
         // Simula uma falha em ResetScheduler para o primeiro plano
         mockScheduler.Setup(s => s.ResetScheduler())
-                     .ReturnsAsync(Result<Model.Unit, SchedulerError>.Error(new SchedulerError("Reset failed")));
+            .ReturnsAsync(Result<Model.Unit, SchedulerError>.Error(new SchedulerError("Reset failed")));
 
 
         var schedulePlans = new List<SchedulePlan>
-                {
-                    new("S1", new List<Operation>()),
-                    new("S2", new List<Operation>()) // Este plano não deve ser processado
-                };
+        {
+            new("S1", new List<Operation>()), new("S2", new List<Operation>()) // Este plano não deve ser processado
+        };
         var outputPath = "test_output_reset_fail.txt";
         if (File.Exists(outputPath)) File.Delete(outputPath);
 
