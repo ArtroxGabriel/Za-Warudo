@@ -26,11 +26,10 @@ COPY --from=build /app/publish .
 # Create necessary directories for runtime
 RUN mkdir -p /app/logs /app/storage /app/data
 
-# Copy the wines.csv to a different location to avoid conflicts
-# FIX: ajeitar
-COPY --from=build /src/ZaWarudo/Data/wines.csv /app/data/
+# Copy the in.txt to a different location to avoid conflicts
+COPY --from=build ./ZaWarudo/Data/in.txt /app/data/
 
-# Copy appsettings.json from the YggdrasilVinum directory
+# Copy appsettings.json from the ZaWarudo directory
 COPY --from=build /src/ZaWarudo/appsettings.json .
 
 # Set environment variables

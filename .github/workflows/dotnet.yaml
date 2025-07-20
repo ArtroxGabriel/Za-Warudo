@@ -1,0 +1,79 @@
+name: .NET CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore ZaWarudo.sln
+
+      - name: Build
+        run: dotnet build ZaWarudo.sln --no-restore --configuration Release
+
+      - name: Test
+        run: dotnet test ZaWarudo.sln --no-build --configuration Release --verbosity normal
+
+  code-quality:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Install JetBrains ReSharper Command Line Tools
+        run: |
+          dotnet tool install -g JetBrains.ReSharper.GlobalTools
+
+      - name: Run code cleanup (formatting)
+        run: |
+          jb cleanupcode ZaWarudo.sln --profile="Built-in: Full Cleanup" --verbosity=INFO --no-buildin-settings
+
+      - name: Check if formatting produced changes
+        id: git-check
+        run: |
+          if [[ -n $(git status --porcelain) ]]; then
+            echo "There are formatting issues that need to be fixed."
+            git diff
+            exit 1
+          else
+            echo "Code is properly formatted!"
+          fi
+
+      - name: Run code inspection
+        run: |
+          jb inspectcode ZaWarudo.sln --output=inspection-results.xml --severity=WARNING
+
+      - name: Check inspection results for issues
+        run: |
+          # Check if the inspection has found any issues
+          if grep -q "<Issue" inspection-results.xml; then
+            echo "Code inspection found issues:"
+            grep -A 5 "<Issue" inspection-results.xml | head -n 20
+            echo "See full report in artifacts for details"
+          else
+            echo "No issues found in code inspection!"
+          fi
+
+      - name: Publish inspection results
+        uses: actions/upload-artifact@v4
+        with:
+          name: inspection-results
+          path: inspection-results.xml
