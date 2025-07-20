@@ -27,7 +27,7 @@ COPY --from=build /app/publish .
 RUN mkdir -p /app/logs /app/storage /app/data
 
 # Copy the in.txt to a different location to avoid conflicts
-COPY --from=build ./ZaWarudo/Data/in.txt /app/data/
+COPY --from=build /src/ZaWarudo/Data/in.txt /app/data/
 
 # Copy appsettings.json from the ZaWarudo directory
 COPY --from=build /src/ZaWarudo/appsettings.json .
