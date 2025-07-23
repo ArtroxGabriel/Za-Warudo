@@ -21,9 +21,7 @@ public static class ApplicationFactory
             .AddJsonFile("appsettings.json")
             .Build();
 
-        Log.Logger = new LoggerConfiguration()
-            .ReadFrom.Configuration(configuration)
-            .CreateLogger();
+        Log.Logger = new LoggerConfiguration().ReadFrom.Configuration(configuration).CreateLogger();
 
         Log.Debug("Configured logging for Za-Warudo Timestamp-Based Scheduling Application");
     }
@@ -36,7 +34,6 @@ public static class ApplicationFactory
     {
         Log.Debug("Loading input data from {inputPath}", inputPath);
 
-
         var inputResult = InputParser.ParseInput(inputPath);
 
         if (inputResult.IsError)
@@ -48,7 +45,10 @@ public static class ApplicationFactory
             var inputData = inputResult.GetValueOrThrow();
             Log.Information(
                 "Input data loaded successfully: {DataRecordsCount} data records, {TransactionsCount} transactions and {SchedulePlansCount} schedule plans",
-                inputData.DataRecords.Count, inputData.TransactionRecords.Count, inputData.SchedulePlans.Count);
+                inputData.DataRecords.Count,
+                inputData.TransactionRecords.Count,
+                inputData.SchedulePlans.Count
+            );
         }
 
         return inputResult;
@@ -62,7 +62,8 @@ public static class ApplicationFactory
     /// <returns>Scheduler interface</returns>
     public static IScheduler CreateScheduler(
         List<DataRecord> dataRecords,
-        List<TransactionRecord> transactionRecords)
+        List<TransactionRecord> transactionRecords
+    )
     {
         Log.Information("Creating scheduler instance");
         var scheduler = new Scheduler.Scheduler();
