@@ -2,13 +2,18 @@
 
 ## Introdução
 
-Za-Warudo é um sistema desenvolvido em C# (.NET 9.0) que implementa um **Escalonador Baseado em Timestamp** para verificar a serialização de transações em sistemas de banco de dados. O projeto foi desenvolvido como parte do Trabalho III da disciplina CK0117 - Sistemas de Bancos de Dados - 2025-1 da Universidade Federal do Ceará (UFC).
+Za-Warudo é um sistema desenvolvido em C# (.NET 9.0) que implementa um **Escalonador Baseado em Timestamp** para
+verificar a serialização de transações em sistemas de banco de dados. O projeto foi desenvolvido como parte do Trabalho
+III da disciplina CK0117 - Sistemas de Bancos de Dados - 2025-1 da Universidade Federal do Ceará (UFC).
 
-O sistema verifica se um determinado escalonamento de transações é **serializável**, ou seja, se sua execução produz o mesmo resultado que uma execução serial (não-concorrente) das mesmas transações.
+O sistema verifica se um determinado escalonamento de transações é **serializável**, ou seja, se sua execução produz o
+mesmo resultado que uma execução serial (não-concorrente) das mesmas transações.
 
 ## Visão Geral
 
-O algoritmo **Escalonador Baseado em Timestamp** assegura a serialização por meio da atribuição de timestamps únicos para cada transação. Essas marcas temporais definem uma ordem de precedência, garantindo que as operações de leitura e escrita sejam executadas de forma equivalente a um escalonamento serial, mesmo em ambientes concorrentes.
+O algoritmo **Escalonador Baseado em Timestamp** assegura a serialização por meio da atribuição de timestamps únicos
+para cada transação. Essas marcas temporais definem uma ordem de precedência, garantindo que as operações de leitura e
+escrita sejam executadas de forma equivalente a um escalonamento serial, mesmo em ambientes concorrentes.
 
 ### Funcionalidades Principais
 
@@ -41,31 +46,41 @@ ZaWarudo/
 ## Componentes Principais
 
 ### 1. **DataRecord** (`Model/DataRecord.cs`)
+
 Representa a estrutura de dados `<ID-dado, TS-Read, TS-Write>` conforme especificado:
+
 - Gerencia timestamps de leitura e escrita para cada objeto de dados
 - Implementa validações de legibilidade e escrita baseadas em timestamps
 - Controla atualizações de timestamps seguindo as regras do algoritmo
 
 ### 2. **TransactionRecord** (`Model/TransactionRecord.cs`)
+
 Modela as transações do sistema:
+
 - Armazena identificador único da transação
 - Mantém o timestamp associado à transação
 
 ### 3. **Scheduler** (`Scheduler/Scheduler.cs`)
+
 Núcleo do algoritmo de escalonamento:
+
 - Implementa a lógica do Timestamp-Based Scheduling
 - Verifica se operações são permitidas baseadas nos timestamps
 - Detecta conflitos e determina necessidade de rollback
 - Atualiza timestamps dos objetos de dados
 
 ### 4. **InputParser** (`Parser/InputParser.cs`)
+
 Processa arquivos de entrada:
+
 - Analisa objetos de dados, transações e timestamps
 - Parseia escalonamentos usando expressões regulares
 - Valida formato e consistência dos dados
 
 ### 5. **ScheduleProcessor** (`Services/ScheduleProcessor.cs`)
+
 Orchestrador principal:
+
 - Coordena o fluxo completo de processamento
 - Integra parser, scheduler e geração de saída
 - Gerencia múltiplos escalonamentos
@@ -97,30 +112,32 @@ graph TD
 ### Processo Detalhado
 
 1. **Entrada**: O sistema lê o arquivo `in.txt` contendo:
-   - Objetos de dados (ex: X, Y, Z)
-   - Transações (ex: T1, T2, T3)
-   - Timestamps (ex: 5, 10, 3)
-   - Escalonamentos (ex: E_1-r1(X) r2(Y) w2(Y)...)
+    - Objetos de dados (ex: X, Y, Z)
+    - Transações (ex: T1, T2, T3)
+    - Timestamps (ex: 5, 10, 3)
+    - Escalonamentos (ex: E_1-r1(X) r2(Y) w2(Y)...)
 
 2. **Parsing**: O `InputParser` processa cada seção do arquivo
 
 3. **Inicialização**: Estruturas de dados são criadas para cada escalonamento
 
 4. **Verificação**: Para cada operação no escalonamento:
-   - Verifica se a operação é permitida baseada nos timestamps
-   - Atualiza timestamps se a operação for válida
-   - Retorna rollback se houver conflito
+    - Verifica se a operação é permitida baseada nos timestamps
+    - Atualiza timestamps se a operação for válida
+    - Retorna rollback se houver conflito
 
 5. **Saída**: Gera arquivo `out.txt` com resultados
 
 ## Requisitos Técnicos
 
 ### Pré-requisitos
+
 - **.NET 9.0 SDK** ou superior
 - **Sistema Operacional**: Windows, Linux ou macOS
 - **Git** (para clonagem do repositório)
 
 ### Dependências
+
 - `Microsoft.Extensions.Configuration.Json` - Configuração da aplicação
 - `Serilog` - Sistema de logging estruturado
 - `System.CommandLine` - Interface de linha de comando
@@ -129,6 +146,7 @@ graph TD
 ### Estrutura de Arquivos de Entrada
 
 O arquivo `in.txt` deve seguir o formato:
+
 ```
 X, Y, Z;
 T1, T2, T3;
@@ -140,6 +158,7 @@ E_3-r3(X) w3(Y) c1 r1(X) w1(Y) c2 r2(Y) w2(Z) c3
 ```
 
 Onde:
+
 - Primeira linha: objetos de dados separados por vírgula
 - Segunda linha: identificadores das transações
 - Terceira linha: timestamps das transações
@@ -150,27 +169,32 @@ Onde:
 ### Via .NET CLI
 
 1. **Clone o repositório**:
+
 ```bash
 git clone https://github.com/ArtroxGabriel/Za-Warudo.git
 cd Za-Warudo
 ```
 
 2. **Restore dependências**:
+
 ```bash
 dotnet restore
 ```
 
 3. **Compile o projeto**:
+
 ```bash
 dotnet build
 ```
 
 4. **Execute a aplicação**:
+
 ```bash
 dotnet run --project ZaWarudo
 ```
 
 5. **Execute com parâmetros customizados**:
+
 ```bash
 dotnet run --project ZaWarudo -- --input "caminho/para/in.txt" --output "caminho/para/out.txt"
 ```
@@ -247,10 +271,12 @@ O projeto inclui um arquivo `.editorconfig` para manter consistência entre dife
 O projeto inclui testes abrangentes organizados em:
 
 #### Testes Unitários (`ZaWarudo.Tests/Unit/`)
+
 - **DataRecordTests**: Testa funcionalidades da classe DataRecord
 - **ResultTests**: Valida o pattern Result para tratamento de erros
 
 #### Testes de Integração (`ZaWarudo.Tests/Integration/`)
+
 - **InputParserTests**: Valida parsing de arquivos de entrada
 - **SchedulerTests**: Testa algoritmo completo de escalonamento
 - **ScheduleProcessorTests**: Verifica fluxo completo de processamento
@@ -270,7 +296,6 @@ dotnet test --filter "ClassName=DataRecordTests"
 # Gerar relatório de cobertura
 dotnet test --collect:"XPlat Code Coverage"
 ```
-
 
 ### Estrutura de Testes
 
@@ -311,4 +336,5 @@ O projeto inclui casos de teste baseados nos exemplos da especificação:
 
 ## Licença
 
-Este projeto foi desenvolvido para fins acadêmicos como parte da disciplina CK0117 - Sistemas de Bancos de Dados da Universidade Federal do Ceará.
+Este projeto foi desenvolvido para fins acadêmicos como parte da disciplina CK0117 - Sistemas de Bancos de Dados da
+Universidade Federal do Ceará.
