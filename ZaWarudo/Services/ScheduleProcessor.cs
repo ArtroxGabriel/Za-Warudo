@@ -1,5 +1,3 @@
-using System.Diagnostics;
-using System.Runtime.InteropServices;
 using Serilog;
 using ZaWarudo.Model;
 using ZaWarudo.Scheduler;
@@ -57,10 +55,8 @@ public class ScheduleProcessor(IScheduler scheduler) : ISchedulerProcessor
 
             // If reset failed, return error after writing the output
             if (resetFailed)
-            {
                 return Result<Unit, ProcessorError>.Error(
                     new ProcessorError($"Failed to reset scheduler after processing plan {plan.ScheduleId}"));
-            }
 
             hasProcessedPlans = true;
         }
@@ -75,7 +71,6 @@ public class ScheduleProcessor(IScheduler scheduler) : ISchedulerProcessor
 
             foreach (var operation in operations)
             {
-
                 _logger.Debug("Data ID: {DataId}, Operations: {Operations}",
                     operation.Key, string.Join(", ", operation.Value));
 
@@ -93,7 +88,8 @@ public class ScheduleProcessor(IScheduler scheduler) : ISchedulerProcessor
         return Result<Unit, ProcessorError>.Success(Unit.Value);
     }
 
-    private async Task<Result<(string Output, bool ResetFailed), ProcessorError>> ProcessExecutionPlanAsync(SchedulePlan plan)
+    private async Task<Result<(string Output, bool ResetFailed), ProcessorError>> ProcessExecutionPlanAsync(
+        SchedulePlan plan)
     {
         _logger.Debug("Processing execution plan...");
 

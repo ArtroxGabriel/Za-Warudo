@@ -112,7 +112,7 @@ public class Scheduler : IScheduler
 
             _logger.Debug("Inserting operation {OperationType} for schedule {ScheduleId} and data {DataId}",
                 op.Type,
-                            _scheduleId,
+                _scheduleId,
                 op.DataId
             );
 

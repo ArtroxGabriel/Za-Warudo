@@ -96,7 +96,7 @@ public class ScheduleProcessorTests
 
         var outputPath = "test_output_overwrite";
         var outputFile = Path.Combine(outputPath, "out.txt");
-        
+
         // Crie o diretório e arquivo com conteúdo antigo para simular que ele já existe
         Directory.CreateDirectory(outputPath);
         await File.WriteAllTextAsync(outputFile, "Old content that should be overwritten.");
