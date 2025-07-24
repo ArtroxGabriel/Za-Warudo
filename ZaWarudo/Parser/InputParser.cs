@@ -127,7 +127,8 @@ public static partial class InputParser
     {
         Log.Debug("Parsing data records from line: {Line}", line);
 
-        var records = line.TrimEnd(';').Split(',').Select(c => c.Trim()).Where(c => !string.IsNullOrEmpty(c)).ToList();
+        var records = line.TrimEnd(';').Split(',').Select(c => c.Trim().ToUpper()).Where(c => !string.IsNullOrEmpty(c))
+            .ToList();
         if (records.Count == 0)
         {
             Log.Warning("No data records found in line: {Line}", line);
@@ -213,21 +214,46 @@ public static partial class InputParser
         var matches = regex.Matches(opsString);
         if (matches.Count == 0)
         {
-            Log.Warning("No operations or invalid ", opsString);
+            Log.Warning("No operations found in: {OpsString}", opsString);
             return Result<SchedulePlan, ParserError>.Error(
                 new ParserError("No operations found in schedule plan", lineNumber));
         }
 
         try
         {
+            var hasValidOperation = false;
+
             foreach (Match match in matches)
             {
-                var type = match.Groups[1].Value switch
+                // Check if this looks like a well-formed operation (letter + digits + optional parentheses)
+                var operationChar = match.Groups[1].Value.ToLower();
+                var hasDigits = !string.IsNullOrEmpty(match.Groups[2].Value);
+                var hasParentheses = match.Groups.Count > 3 && !string.IsNullOrEmpty(match.Groups[3].Value);
+
+                // Consider it well-formed if it has the expected structure for operations
+                if (hasDigits || hasParentheses || operationChar == "c")
+                {
+                    if (operationChar != "r" && operationChar != "w" && operationChar != "c")
+                    {
+                        Log.Warning("Invalid operation type: {OperationType}", operationChar);
+                        return Result<SchedulePlan, ParserError>.Error(
+                            new ParserError("Invalid operation type", lineNumber));
+                    }
+                }
+                else
+                {
+                    // Skip matches that don't look like operations (isolated letters)
+                    continue;
+                }
+
+                hasValidOperation = true;
+
+                var type = operationChar switch
                 {
                     "r" => OperationType.Read,
                     "w" => OperationType.Write,
                     "c" => OperationType.Commit,
-                    _ => throw new ArgumentException("Invalid operation type")
+                    _ => throw new ArgumentException("Invalid operation type") // This should never be reached now
                 };
                 var transactionId = $"T{match.Groups[2].Value}";
                 var dataId = match.Groups.Count > 3 && !string.IsNullOrEmpty(match.Groups[3].Value)
@@ -235,6 +261,13 @@ public static partial class InputParser
                     : string.Empty;
 
                 operations.Add(new Operation(type, transactionId, dataId));
+            }
+
+            if (!hasValidOperation)
+            {
+                Log.Warning("No valid operations found in: {OpsString}", opsString);
+                return Result<SchedulePlan, ParserError>.Error(
+                    new ParserError("No operations found in schedule plan", lineNumber));
             }
 
             var schedulePlan = new SchedulePlan(scheduleId, operations);
@@ -250,7 +283,7 @@ public static partial class InputParser
     }
 
 
-    [GeneratedRegex(@"([A-Za-z])(\d+)(?:\(([^)]*)\))?")]
+    [GeneratedRegex(@"([A-Za-z])(\d*)(?:\(([^)]*)\))?")]
     private static partial Regex ScheduleRegex();
 }
 
