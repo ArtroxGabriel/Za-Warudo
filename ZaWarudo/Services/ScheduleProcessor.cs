@@ -15,18 +15,17 @@ public class ScheduleProcessor(IScheduler scheduler) : ISchedulerProcessor
     {
         _logger.Debug("Processing schedule plans...");
 
-        // Get the directory from the output path and create it if needed
-        var outputDirectory = Path.GetDirectoryName(outputPath);
-        if (!string.IsNullOrEmpty(outputDirectory) && !Directory.Exists(outputDirectory))
+        // Ensure the output directory exists
+        if (!Directory.Exists(outputPath))
         {
-            _logger.Warning("Output directory does not exist, creating: {OutputDirectory}", outputDirectory);
+            _logger.Warning("Output directory does not exist, creating: {OutputDirectory}", outputPath);
             try
             {
-                Directory.CreateDirectory(outputDirectory);
+                Directory.CreateDirectory(outputPath);
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Failed to create output directory: {OutputDirectory}", outputDirectory);
+                _logger.Error(ex, "Failed to create output directory: {OutputDirectory}", outputPath);
                 return Result<Unit, ProcessorError>.Error(
                     new ProcessorError($"Failed to create output directory: {ex.Message}"));
             }
@@ -53,9 +52,15 @@ public class ScheduleProcessor(IScheduler scheduler) : ISchedulerProcessor
                 return Result<Unit, ProcessorError>.Error(processResult.GetErrorOrThrow());
             }
 
-
-            var outputString = processResult.GetValueOrThrow();
+            var (outputString, resetFailed) = processResult.GetValueOrThrow();
             await writer.WriteLineAsync(outputString);
+
+            // If reset failed, return error after writing the output
+            if (resetFailed)
+            {
+                return Result<Unit, ProcessorError>.Error(
+                    new ProcessorError($"Failed to reset scheduler after processing plan {plan.ScheduleId}"));
+            }
 
             hasProcessedPlans = true;
         }
@@ -75,7 +80,7 @@ public class ScheduleProcessor(IScheduler scheduler) : ISchedulerProcessor
                     operation.Key, string.Join(", ", operation.Value));
 
                 // For data operations, use the same directory as the main output file
-                var dataOperationFilePath = Path.Combine(outputDirectory ?? "Data/", $"{operation.Key}.txt");
+                var dataOperationFilePath = Path.Combine(outputPath, $"{operation.Key}.txt");
 
                 await using var dataOperationFileStream = File.Open(dataOperationFilePath, FileMode.Create);
                 await using var dataOperationWriter = new StreamWriter(dataOperationFileStream);
@@ -88,7 +93,7 @@ public class ScheduleProcessor(IScheduler scheduler) : ISchedulerProcessor
         return Result<Unit, ProcessorError>.Success(Unit.Value);
     }
 
-    private async Task<Result<string, ProcessorError>> ProcessExecutionPlanAsync(SchedulePlan plan)
+    private async Task<Result<(string Output, bool ResetFailed), ProcessorError>> ProcessExecutionPlanAsync(SchedulePlan plan)
     {
         _logger.Debug("Processing execution plan...");
 
@@ -97,7 +102,7 @@ public class ScheduleProcessor(IScheduler scheduler) : ISchedulerProcessor
         if (setScheduleResult.IsError)
         {
             _logger.Error("Failed to set schedule: {Error}", setScheduleResult.GetErrorOrThrow());
-            return Result<string, ProcessorError>.Error(
+            return Result<(string Output, bool ResetFailed), ProcessorError>.Error(
                 new ProcessorError(
                     $"Failed to set schedule for plan {plan.ScheduleId}: {setScheduleResult.GetErrorOrThrow()}")
             );
@@ -107,23 +112,22 @@ public class ScheduleProcessor(IScheduler scheduler) : ISchedulerProcessor
         if (checkResult.IsError)
         {
             _logger.Error("Failed to check if schedule is serializable: {Error}", checkResult.GetErrorOrThrow());
-            return Result<string, ProcessorError>.Error(
+            return Result<(string Output, bool ResetFailed), ProcessorError>.Error(
                 new ProcessorError(
                     $"Failed to check serializability for plan {plan.ScheduleId}: {checkResult.GetErrorOrThrow()}"));
-        }
-
-        var resetResult = await scheduler.ResetScheduler();
-        if (resetResult.IsError)
-        {
-            _logger.Error("Failed to reset scheduler: {Error}", resetResult.GetErrorOrThrow());
-            return Result<string, ProcessorError>.Error(
-                new ProcessorError(
-                    $"Failed to reset scheduler after processing plan {plan.ScheduleId}: {resetResult.GetErrorOrThrow()}"));
         }
 
         var outputString = checkResult.GetValueOrThrow();
         _logger.Information("Schedule {ScheduleId} processed: {Output}", plan.ScheduleId, outputString);
 
-        return Result<string, ProcessorError>.Success(outputString);
+        var resetResult = await scheduler.ResetScheduler();
+        if (resetResult.IsError)
+        {
+            _logger.Error("Failed to reset scheduler: {Error}", resetResult.GetErrorOrThrow());
+            // Return success with the output but mark reset as failed
+            return Result<(string Output, bool ResetFailed), ProcessorError>.Success((outputString, true));
+        }
+
+        return Result<(string Output, bool ResetFailed), ProcessorError>.Success((outputString, false));
     }
 }
