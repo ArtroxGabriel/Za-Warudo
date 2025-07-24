@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/ArtroxGabriel/Za-Warudo/compare/v1.0.0...v1.0.1) (2025-07-24)
+
+
+### Bug Fixes
+
+* reset timestamp on commit, save dataRecords log ([e2c9b5c](https://github.com/ArtroxGabriel/Za-Warudo/commit/e2c9b5c5294e8801076f3092b1266e41666f1fcd))
+
 # 1.0.0 (2025-07-23)
 
 ### Bug Fixes
