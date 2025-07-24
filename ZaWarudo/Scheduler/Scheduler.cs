@@ -15,6 +15,8 @@ public class Scheduler : IScheduler
 
     private Dictionary<string, TransactionRecord> _transactions { get; set; } = new();
 
+    public Dictionary<string, IEnumerable<string>> OperationsForDataRecord { get; set; } = new();
+
     public Task<Result<Unit, SchedulerError>> InitializeAsync()
     {
         _logger.Debug("Initializing scheduler...");
@@ -63,7 +65,7 @@ public class Scheduler : IScheduler
         var scheduleTime = 0u;
         foreach (var op in _operations)
         {
-            bool result;
+            var result = true;
             switch (op.Type)
             {
                 case OperationType.Read:
@@ -100,12 +102,25 @@ public class Scheduler : IScheduler
                     result = writeResult.GetValueOrThrow();
                     break;
                 case OperationType.Commit:
+                    foreach (var keyValuePair in _dataRecords) keyValuePair.Value.ResetRecord();
+
+                    break;
                 default:
                     result = true;
                     break;
             }
 
-            if (result == false)
+            _logger.Debug("Inserting operation {OperationType} for schedule {ScheduleId} and data {DataId}",
+                op.Type,
+                            _scheduleId,
+                op.DataId
+            );
+
+            var operationString = $"{_scheduleId},{op.Type.ToString().ToLowerInvariant()},{scheduleTime}";
+            if (op.Type != OperationType.Commit)
+                OperationsForDataRecord[op.DataId] = OperationsForDataRecord[op.DataId].Append(operationString);
+
+            if (!result)
             {
                 var schedulerResult = _scheduleId + "-ROLLBACK-" + scheduleTime;
 
@@ -147,9 +162,16 @@ public class Scheduler : IScheduler
         return Task.FromResult(Result<List<DataRecord>, SchedulerError>.Success(list));
     }
 
+    public Task<Result<Dictionary<string, IEnumerable<string>>, SchedulerError>> GetOperationsForDataRecords()
+    {
+        return Task.FromResult(Result<Dictionary<string, IEnumerable<string>>, SchedulerError>.Success(
+            OperationsForDataRecord));
+    }
+
     public Result<Unit, SchedulerError> SetDataRecords(Dictionary<string, DataRecord> dataRecords)
     {
         _dataRecords = dataRecords;
+        foreach (var keyValuePair in _dataRecords) OperationsForDataRecord.Add(keyValuePair.Key, new List<string>());
 
         return Result<Unit, SchedulerError>.Success(Unit.Value);
     }
