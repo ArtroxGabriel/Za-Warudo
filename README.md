@@ -22,6 +22,9 @@ escrita sejam executadas de forma equivalente a um escalonamento serial, mesmo e
 - 📝 **Geração de Logs**: Produz arquivos de saída detalhados com resultados
 - 🔄 **Detecção de Rollback**: Identifica quando transações precisam ser reiniciadas
 - 🧪 **Testes Abrangentes**: Suite completa de testes unitários e de integração
+- 🛡️ **Tratamento de Erros**: Sistema robusto com Result Pattern para controle de falhas
+- 📊 **Logging Estruturado**: Sistema de logs com Serilog para debugging e auditoria
+- 🐳 **Containerização**: Suporte completo ao Docker para deploy e desenvolvimento
 
 ## Arquitetura
 
@@ -39,9 +42,14 @@ ZaWarudo/
 ### Padrões Utilizados
 
 - **Dependency Injection**: Para inversão de controle
-- **Result Pattern**: Para tratamento de erros sem exceções
+- **Result Pattern**: Para tratamento de erros sem exceções, com tipos específicos:
+  - `Result<TValue, TError>` - Tipo genérico para operações que podem falhar
+  - `SchedulerError` - Erros específicos do escalonador
+  - `ParserError` - Erros de parsing de entrada
+  - `ProcessorError` - Erros de processamento de escalonamentos
 - **Factory Pattern**: Para criação de objetos complexos
 - **Strategy Pattern**: Para diferentes tipos de operações
+- **Interface Segregation**: Interfaces específicas para cada responsabilidade
 
 ## Componentes Principais
 
@@ -60,7 +68,23 @@ Modela as transações do sistema:
 - Armazena identificador único da transação
 - Mantém o timestamp associado à transação
 
-### 3. **Scheduler** (`Scheduler/Scheduler.cs`)
+### 3. **Result Pattern** (`Model/Result.cs`)
+
+Implementa tratamento de erros funcional sem exceções:
+
+- `Result<TValue, TError>` - Tipo genérico para operações que podem falhar
+- Métodos `Match`, `Map`, `Bind` para composição funcional
+- `Unit` - Tipo para representar operações que não retornam valor
+
+### 4. **Error Types** (`Model/` e interfaces)
+
+Tipos específicos de erro para diferentes contextos:
+
+- `SchedulerError` - Erros relacionados ao algoritmo de escalonamento
+- `ParserError` - Erros durante parsing de arquivos de entrada  
+- `ProcessorError` - Erros durante processamento de escalonamentos
+
+### 5. **Scheduler** (`Scheduler/Scheduler.cs`)
 
 Núcleo do algoritmo de escalonamento:
 
@@ -69,21 +93,23 @@ Núcleo do algoritmo de escalonamento:
 - Detecta conflitos e determina necessidade de rollback
 - Atualiza timestamps dos objetos de dados
 
-### 4. **InputParser** (`Parser/InputParser.cs`)
+### 6. **InputParser** (`Parser/InputParser.cs`)
 
 Processa arquivos de entrada:
 
 - Analisa objetos de dados, transações e timestamps
 - Parseia escalonamentos usando expressões regulares
 - Valida formato e consistência dos dados
+- Implementa parsing robusto com tratamento de erros
 
-### 5. **ScheduleProcessor** (`Services/ScheduleProcessor.cs`)
+### 7. **ScheduleProcessor** (`Services/ScheduleProcessor.cs`)
 
 Orchestrador principal:
 
 - Coordena o fluxo completo de processamento
 - Integra parser, scheduler e geração de saída
 - Gerencia múltiplos escalonamentos
+- Gera arquivos de saída individuais por objeto de dados
 
 ## Fluxo de Dados
 
@@ -126,7 +152,38 @@ graph TD
     - Atualiza timestamps se a operação for válida
     - Retorna rollback se houver conflito
 
-5. **Saída**: Gera arquivo `out.txt` com resultados
+5. **Saída**: Gera arquivo `out.txt` com resultados e arquivos individuais para cada objeto de dados
+
+## Sistema de Logging
+
+O projeto utiliza Serilog para logging estruturado com as seguintes características:
+
+### Configuração de Logs
+
+- **Console Sink**: Logs em tempo real no console durante execução
+- **File Sink**: Logs persistidos em arquivos com rotação automática
+- **Níveis configuráveis**: Debug, Information, Warning, Error, Fatal
+- **Formato estruturado**: Logs em formato JSON para melhor análise
+
+### Localização dos Logs
+
+- Arquivos de log são salvos no diretório `logs/`
+- Nomenclatura: `zawarudo-YYYYMMDD.txt`
+- Rotação diária automática para facilitar manutenção
+
+### Configuração via `appsettings.json`
+
+```json
+{
+  "Serilog": {
+    "MinimumLevel": "Debug",
+    "WriteTo": [
+      { "Name": "Console" },
+      { "Name": "File", "Args": { "path": "logs/zawarudo-.txt" } }
+    ]
+  }
+}
+```
 
 ## Requisitos Técnicos
 
@@ -139,9 +196,14 @@ graph TD
 ### Dependências
 
 - `Microsoft.Extensions.Configuration.Json` - Configuração da aplicação
-- `Serilog` - Sistema de logging estruturado
+- `Serilog` - Sistema de logging estruturado com as seguintes extensões:
+  - `Serilog.Expressions` - Expressões para configuração de logs
+  - `Serilog.Settings.Configuration` - Configuração via arquivo JSON
+  - `Serilog.Sinks.Console` - Saída de logs para console
+  - `Serilog.Sinks.File` - Saída de logs para arquivos
 - `System.CommandLine` - Interface de linha de comando
 - `xUnit` - Framework de testes (projeto de testes)
+- `Moq` - Framework para criação de mocks em testes
 
 ### Estrutura de Arquivos de Entrada
 
@@ -196,14 +258,21 @@ dotnet run --project ZaWarudo
 5. **Execute com parâmetros customizados**:
 
 ```bash
-dotnet run --project ZaWarudo -- --input "caminho/para/in.txt" --output "caminho/para/out.txt"
+dotnet run --project ZaWarudo -- --input "caminho/para/in.txt" --output "caminho/para/diretorio/"
 ```
 
 ### Parâmetros de Linha de Comando
 
 - `--input`: Caminho para o arquivo de entrada (padrão: `ZaWarudo/Data/in.txt`)
-- `--output`: Caminho para o arquivo de saída (padrão: `ZaWarudo/Data/out.txt`)
+- `--output`: Caminho para o diretório de saída onde os arquivos serão salvos (padrão: `ZaWarudo/Data/`)
 - `--help`: Exibe ajuda sobre os comandos disponíveis
+
+### Arquivos de Saída
+
+O sistema gera os seguintes arquivos no diretório de saída:
+
+- `out.txt`: Arquivo principal com os resultados da verificação de serialização
+- `[DataId].txt`: Arquivos individuais para cada objeto de dados com suas operações (ex: `A.txt`, `B.txt`, `C.txt`)
 
 ## Usando Docker
 
@@ -221,7 +290,7 @@ docker build -t za-warudo .
 docker run --rm -v $(pwd)/ZaWarudo/Data:/app/Data za-warudo
 
 # Executar com parâmetros customizados
-docker run --rm -v $(pwd)/ZaWarudo/Data:/app/Data za-warudo --input "Data/in.txt" --output "Data/out.txt"
+docker run --rm -v $(pwd)/ZaWarudo/Data:/app/Data za-warudo --input "Data/in.txt" --output "Data/"
 ```
 
 ### Docker Compose (Desenvolvimento)
@@ -232,9 +301,18 @@ services:
   za-warudo:
     build: .
     volumes:
-      - ./ZaWarudo/Data:/app/Data
+      - ./ZaWarudo/Data:/app/data
       - ./logs:/app/logs
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
 ```
+
+### Características do Dockerfile
+
+- **Multi-stage build**: Otimização do tamanho da imagem final
+- **Base .NET 9.0**: Utiliza imagens oficiais Microsoft
+- **Diretórios organizados**: `/app/logs`, `/app/storage`, `/app/data`
+- **Cópia de arquivos**: Arquivo de entrada padrão incluído na imagem
 
 ## Formatação de Código
 
@@ -299,27 +377,45 @@ dotnet test --collect:"XPlat Code Coverage"
 
 ### Estrutura de Testes
 
+O projeto inclui uma suite completa de testes organizados em:
+
 ```
 ZaWarudo.Tests/
-├── Unit/
+├── Unit/                          # Testes unitários
 │   └── Models/
-│       ├── DataRecordTests.cs
-│       └── ResultTests.cs
-├── Integration/
+│       ├── DataRecordTests.cs     # Testa funcionalidades de DataRecord
+│       └── ResultTests.cs         # Testa o Result Pattern
+├── Integration/                   # Testes de integração
 │   ├── Parser/
-│   │   └── InputParserTests.cs
+│   │   └── InputParserTests.cs    # Testa parsing completo de arquivos
 │   ├── Scheduler/
-│   │   ├── CheckIfSerializableTests.cs
-│   │   └── SchedulerTests.cs
+│   │   ├── CheckIfSerializableTests.cs    # Testa verificação de serialização
+│   │   └── SchedulerTests.cs              # Testa algoritmo de escalonamento
 │   └── Services/
-│       └── ScheduleProcessorTests.cs
-└── UnitTest1.cs
+│       └── ScheduleProcessorTests.cs      # Testa fluxo completo de processamento
+└── UnitTest1.cs                   # Testes auxiliares
 ```
 
 ### Exemplos de Casos de Teste
 
 O projeto inclui casos de teste baseados nos exemplos da especificação:
 
+#### Testes de Parsing
+```csharp
+[Fact]
+public void ParseDataRecords_ValidInput_ReturnsSuccessWithCorrectDataRecords()
+{
+    // Testa parsing de objetos de dados: "A,B,C;"
+}
+
+[Fact]
+public void ParseTransactionRecords_ValidInput_ReturnsSuccessWithCorrectTransactionRecords()
+{
+    // Testa parsing de transações e timestamps: "T1,T2,T3" e "5,10,3"
+}
+```
+
+#### Testes de Escalonamento
 ```csharp
 [InlineData("X, Y, Z", "T1, T2, T3", "5, 10, 3", 
            "E_1-r1(X) r2(Y) w2(Y) r3(Y) w1(X) c1", "E_1-ROLLBACK-3")]
@@ -327,12 +423,27 @@ O projeto inclui casos de teste baseados nos exemplos da especificação:
            "E_3-r3(X) w3(Y) c1 r1(X) w1(Y) c2 r2(Y) w2(Z) c3", "E_3-OK")]
 ```
 
+#### Testes de Error Handling
+```csharp
+[Fact]
+public async Task ProcessScheduleAsync_SetScheduleFails_ReturnsErrorAndStopsProcessing()
+{
+    // Testa comportamento quando falha ao definir escalonamento
+}
+
+[Fact]
+public async Task ProcessScheduleAsync_CheckIfSerializableFails_ReturnsErrorAndStopsProcessing()
+{
+    // Testa comportamento quando falha verificação de serialização
+}
+```
+
 ---
 
 ## Autores
 
-- **Antonio Gabriel** - [antgabriel.dev@gmail.com](mailto:antgabriel.dev@gmail.com)
-- **Said Rodrigues** - []()
+- **Antonio Gabriel** - [antgabriel.dev@gmail.com](mailto:antgabriel.dev@gmail.com) - 
+- **Said Rodrigues** - [example@org.com](mailto:example@org.com)
 
 ## Licença
 

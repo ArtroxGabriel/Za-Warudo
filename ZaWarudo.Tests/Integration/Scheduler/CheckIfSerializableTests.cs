@@ -16,36 +16,52 @@ public partial class CheckIfSerializableTests
             .CreateLogger();
     }
 
+    // I'm sorry but the guys said that if we do a commit all timestamps are reseted. I'm sorry Rhaman
     [Theory]
     [InlineData(
-        "X, Y",
-        "T1, T2, T3",
-        "5, 10, 3",
-        "E_1-r1(X) r2(Y) w2(Y) r3(Y) w1(X) c1",
-        "E_1-ROLLBACK-3"
+        "E_1-r1(A) r4(A) r3(A) r3(B) r2(A) c",
+        "E_1-OK"
     )]
     [InlineData(
-        "X, Y, Z",
-        "T1, T2, T3",
-        "5, 10, 3",
-        "E_2-w2(X) r1(Y) w3(X) r2(Z) w1(Z) c1",
-        "E_2-ROLLBACK-2"
+        "E_2-r1(A) c w4(A) r2(A) r3(C) c",
+        "E_2-OK"
     )]
     [InlineData(
-        "X, Y, Z",
-        "T1, T2, T3",
-        "5, 10, 3",
-        "E_3-r3(X) w3(Y) c1 r1(X) w1(Y) c2 r2(Y) w2(Z) c3",
+        "E_3-w4(B) r1(B) r2(B) c r4(A) r3(A) r3(D) w3(D) r2(D) r2(B) c",
         "E_3-OK"
     )]
+    [InlineData(
+        "E_4-w4(B) r1(B) r2(B) c r4(A) r3(A) r3(D) w3(D) r4(D) w4(D) r2(C) w1(D) w3(D) c r3(C) r3(B) r2(A) c",
+        "E_4-ROLLBACK-12"
+    )]
+    [InlineData(
+        "E_5-w4(B) r1(B) r2(B) c r4(A) r3(A) r3(D) w3(D) r4(D) w4(D) r2(C) w1(D) c w3(D) r3(C) r3(B) r2(A) c",
+        "E_5-OK"
+    )]
+    [InlineData(
+        "E_6-r1(A) r2(A) w2(B) w3(C) c w3(B) w4(A) w4(B) c",
+        "E_6-OK"
+    )]
+    [InlineData(
+        "E_7-w1(A) r2(B) r1(B) w2(B) r1(A) c w3(B) w4(A) w2(B) c",
+        "E_7-OK"
+    )]
+    [InlineData(
+        "E_8-w1(A) r2(B) r1(B) w2(B) r1(A) w3(B) w4(A) w2(B) c",
+        "E_8-ROLLBACK-5"
+    )]
+    [InlineData(
+        "E_9-w1(A) r2(B) r1(B) r1(A) w3(B) w4(A) w2(B) c",
+        "E_9-ROLLBACK-4"
+    )]
     public async Task CheckIfSerializableAsync_WithProvidedSchedules_ShouldReturnExpectedResult(
-        string dataRecordsString,
-        string transactionsString,
-        string timestampsString,
         string scheduleString,
         string expected
     )
     {
+        var dataRecordsString = "A, B, C, D";
+        var transactionsString = "t1, t2, t3, t4";
+        var timestampsString = "8, 9, 1, 4";
         // Arrange
         var scheduler = new ZaWarudo.Scheduler.Scheduler();
         var schedulePlan = ParseSchedule(scheduleString);
@@ -106,7 +122,7 @@ public partial class CheckIfSerializableTests
         string timestampsString
     )
     {
-        var transactionIds = transactionsString.Split(',').Select(t => t.Trim()).ToArray();
+        var transactionIds = transactionsString.Split(',').Select(t => t.Trim().ToUpper()).ToArray();
         var timestamps = timestampsString.Split(',').Select(t => uint.Parse(t.Trim())).ToArray();
 
         if (transactionIds.Length != timestamps.Length)
@@ -121,10 +137,10 @@ public partial class CheckIfSerializableTests
     {
         return dataRecordsString
             .Split(',')
-            .Select(id => new DataRecord(id.Trim()))
+            .Select(id => new DataRecord(id.Trim().ToUpper()))
             .ToDictionary(d => d.Id, d => d);
     }
 
-    [GeneratedRegex(@"(r|w|c)(\d+)(?:\(([^)]*)\))?")]
+    [GeneratedRegex(@"(r|w|c)(\d*)(?:\(([^)]*)\))?")]
     private static partial Regex OperationRegex();
 }

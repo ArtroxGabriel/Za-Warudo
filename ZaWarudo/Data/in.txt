@@ -1,6 +1,12 @@
-X, Y, Z;
-t1, t2, t3;
-5, 10, 3;
-E_1-r1(X) r2(Y) w2(Y) r3(Y) w1(X) c1
-E_2-w2(X) r1(Y) w3(X) r2(Z) w1(Z) c1
-E_3-r3(X) w3(Y) c1 r1(X) w1(Y) c2 r2(Y) w2(Z) c3
+A, B, C, D;
+t1, t2, t3, t4;
+8, 9, 1, 4;
+E_1-r1(A) r4(A) r3(A) r3(B) r2(A) c
+E_2-r1(A) c w4(A) r2(A) r3(C) c
+E_3-w4(B) r1(B) r2(B) c r4(A) r3(A) r3(D) w3(D) r2(D) r2(B) c
+E_4-w4(B) r1(B) r2(B) c r4(A) r3(A) r3(D) w3(D) r4(D) w4(D) r2(C) w1(D) w3(D) c r3(C) r3(B) r2(A) c
+E_5-w4(B) r1(B) r2(B) c r4(A) r3(A) r3(D) w3(D) r4(D) w4(D) r2(C) w1(D) c w3(D) r3(C) r3(B) r2(A) c
+E_6-r1(A) r2(A) w2(B) w3(C) c w3(B) w4(A) w4(B) c
+E_7-w1(A) r2(B) r1(B) w2(B) r1(A) c w3(B) w4(A) w2(B) c
+E_8-w1(A) r2(B) r1(B) w2(B) r1(A) w3(B) w4(A) w2(B) c
+E_9-w1(A) r2(B) r1(B) r1(A) w3(B) w4(A) w2(B) c
