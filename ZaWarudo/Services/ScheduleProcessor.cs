@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.Runtime.InteropServices;
 using Serilog;
 using ZaWarudo.Model;
 using ZaWarudo.Scheduler;
@@ -13,52 +15,115 @@ public class ScheduleProcessor(IScheduler scheduler) : ISchedulerProcessor
     {
         _logger.Debug("Processing schedule plans...");
 
-        if (File.Exists(outputPath))
-            Log.Warning("the file already exists, it will be overwritten: {OutputPath}", outputPath);
+        // Get the directory from the output path and create it if needed
+        var outputDirectory = Path.GetDirectoryName(outputPath);
+        if (!string.IsNullOrEmpty(outputDirectory) && !Directory.Exists(outputDirectory))
+        {
+            _logger.Warning("Output directory does not exist, creating: {OutputDirectory}", outputDirectory);
+            try
+            {
+                Directory.CreateDirectory(outputDirectory);
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "Failed to create output directory: {OutputDirectory}", outputDirectory);
+                return Result<Unit, ProcessorError>.Error(
+                    new ProcessorError($"Failed to create output directory: {ex.Message}"));
+            }
+        }
 
-        _logger.Information("Output file created at {OutputPath}", outputPath);
+        _logger.Information("Output file will be created at {OutputPath}", outputPath);
 
-        await using var fileStream = File.Open(outputPath, FileMode.Create);
+        var outputFile = Path.Combine(outputPath, "out.txt");
+        await using var fileStream = File.Open(outputFile, FileMode.Create);
         await using var writer = new StreamWriter(fileStream);
 
-        foreach (var plan in schedulePlans)
+        var schedulePlansArray = schedulePlans.ToArray();
+        var hasProcessedPlans = false;
+
+        foreach (var plan in schedulePlansArray)
         {
             _logger.Debug("Processing schedule plan with ID {ScheduleId}", plan.ScheduleId);
 
-            var setScheduleResult = await scheduler.SetScheduleAsync(plan);
-            if (setScheduleResult.IsError)
+            var processResult = await ProcessExecutionPlanAsync(plan);
+            if (processResult.IsError)
             {
-                _logger.Error("Failed to set schedule: {Error}", setScheduleResult.GetErrorOrThrow());
-                return Result<Unit, ProcessorError>.Error(
-                    new ProcessorError(
-                        $"Failed to set schedule for plan {plan.ScheduleId}: {setScheduleResult.GetErrorOrThrow()}")
-                );
+                _logger.Error("Failed to process schedule plan {ScheduleId}: {Error}",
+                    plan.ScheduleId, processResult.GetErrorOrThrow());
+                return Result<Unit, ProcessorError>.Error(processResult.GetErrorOrThrow());
             }
 
-            var checkResult = await scheduler.CheckIfSerializableAsync();
-            if (checkResult.IsError)
-            {
-                _logger.Error("Failed to check if schedule is serializable: {Error}", checkResult.GetErrorOrThrow());
-                return Result<Unit, ProcessorError>.Error(
-                    new ProcessorError(
-                        $"Failed to check serializability for plan {plan.ScheduleId}: {checkResult.GetErrorOrThrow()}"));
-            }
 
-            var outputString = checkResult.GetValueOrThrow();
+            var outputString = processResult.GetValueOrThrow();
             await writer.WriteLineAsync(outputString);
-            _logger.Information("Schedule {ScheduleId} processed: {Output}", plan.ScheduleId, outputString);
 
-            var resetResult = await scheduler.ResetScheduler();
-            if (resetResult.IsError)
+            hasProcessedPlans = true;
+        }
+
+        // Only get operations if we actually processed some plans
+        if (hasProcessedPlans)
+        {
+            _logger.Information("Saving data operations");
+
+            var operationsResult = await scheduler.GetOperationsForDataRecords();
+            var operations = operationsResult.GetValueOrThrow();
+
+            foreach (var operation in operations)
             {
-                _logger.Error("Failed to reset scheduler: {Error}", resetResult.GetErrorOrThrow());
-                return Result<Unit, ProcessorError>.Error(
-                    new ProcessorError(
-                        $"Failed to reset scheduler after processing plan {plan.ScheduleId}: {resetResult.GetErrorOrThrow()}"));
+
+                _logger.Debug("Data ID: {DataId}, Operations: {Operations}",
+                    operation.Key, string.Join(", ", operation.Value));
+
+                // For data operations, use the same directory as the main output file
+                var dataOperationFilePath = Path.Combine(outputDirectory ?? "Data/", $"{operation.Key}.txt");
+
+                await using var dataOperationFileStream = File.Open(dataOperationFilePath, FileMode.Create);
+                await using var dataOperationWriter = new StreamWriter(dataOperationFileStream);
+
+                foreach (var op in operation.Value) await dataOperationWriter.WriteLineAsync(op);
             }
         }
 
         _logger.Information("Schedule plans processed successfully");
         return Result<Unit, ProcessorError>.Success(Unit.Value);
+    }
+
+    private async Task<Result<string, ProcessorError>> ProcessExecutionPlanAsync(SchedulePlan plan)
+    {
+        _logger.Debug("Processing execution plan...");
+
+
+        var setScheduleResult = await scheduler.SetScheduleAsync(plan);
+        if (setScheduleResult.IsError)
+        {
+            _logger.Error("Failed to set schedule: {Error}", setScheduleResult.GetErrorOrThrow());
+            return Result<string, ProcessorError>.Error(
+                new ProcessorError(
+                    $"Failed to set schedule for plan {plan.ScheduleId}: {setScheduleResult.GetErrorOrThrow()}")
+            );
+        }
+
+        var checkResult = await scheduler.CheckIfSerializableAsync();
+        if (checkResult.IsError)
+        {
+            _logger.Error("Failed to check if schedule is serializable: {Error}", checkResult.GetErrorOrThrow());
+            return Result<string, ProcessorError>.Error(
+                new ProcessorError(
+                    $"Failed to check serializability for plan {plan.ScheduleId}: {checkResult.GetErrorOrThrow()}"));
+        }
+
+        var resetResult = await scheduler.ResetScheduler();
+        if (resetResult.IsError)
+        {
+            _logger.Error("Failed to reset scheduler: {Error}", resetResult.GetErrorOrThrow());
+            return Result<string, ProcessorError>.Error(
+                new ProcessorError(
+                    $"Failed to reset scheduler after processing plan {plan.ScheduleId}: {resetResult.GetErrorOrThrow()}"));
+        }
+
+        var outputString = checkResult.GetValueOrThrow();
+        _logger.Information("Schedule {ScheduleId} processed: {Output}", plan.ScheduleId, outputString);
+
+        return Result<string, ProcessorError>.Success(outputString);
     }
 }
