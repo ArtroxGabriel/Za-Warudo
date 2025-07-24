@@ -34,14 +34,19 @@ public class ScheduleProcessorTests
         mockScheduler.Setup(s => s.ResetScheduler())
             .ReturnsAsync(Result<Model.Unit, SchedulerError>.Success(Model.Unit.Value));
 
+        mockScheduler.Setup(s => s.GetOperationsForDataRecords())
+            .ReturnsAsync(Result<Dictionary<string, IEnumerable<string>>, SchedulerError>.Success(
+                new Dictionary<string, IEnumerable<string>>()));
+
         var schedulePlans = new List<SchedulePlan>
         {
             new("S1", new List<Operation> { new(OperationType.Read, "T1", "A") }),
             new("S2", new List<Operation> { new(OperationType.Write, "T2", "B") })
         };
 
-        const string outputPath = "test_output_successful.txt";
-        if (File.Exists(outputPath)) File.Delete(outputPath);
+        const string outputPath = "test_output_successful";
+        var outputFile = Path.Combine(outputPath, "out.txt");
+        if (Directory.Exists(outputPath)) Directory.Delete(outputPath, true);
 
         var processor = new ScheduleProcessor(mockScheduler.Object);
 
@@ -60,16 +65,16 @@ public class ScheduleProcessorTests
             mockScheduler.Verify(s => s.ResetScheduler(), Times.Exactly(2));
 
             // Verifique o conteúdo do arquivo de saída
-            Assert.True(File.Exists(outputPath));
-            var outputContent = await File.ReadAllTextAsync(outputPath);
+            Assert.True(File.Exists(outputFile));
+            var outputContent = await File.ReadAllTextAsync(outputFile);
             Assert.Contains("Result for S1", outputContent);
             Assert.Contains("Result for S2", outputContent);
             Assert.DoesNotContain("Result for S3", outputContent); // Verifique que não há lixo
         }
         finally
         {
-            // Clean up: Delete the test output file
-            if (File.Exists(outputPath)) File.Delete(outputPath);
+            // Clean up: Delete the test output directory
+            if (Directory.Exists(outputPath)) Directory.Delete(outputPath, true);
         }
     }
 
@@ -85,9 +90,16 @@ public class ScheduleProcessorTests
         mockScheduler.Setup(s => s.ResetScheduler())
             .ReturnsAsync(Result<Model.Unit, SchedulerError>.Success(Model.Unit.Value));
 
-        var outputPath = "test_output_overwrite.txt";
-        // Crie o arquivo com conteúdo antigo para simular que ele já existe
-        await File.WriteAllTextAsync(outputPath, "Old content that should be overwritten.");
+        mockScheduler.Setup(s => s.GetOperationsForDataRecords())
+            .ReturnsAsync(Result<Dictionary<string, IEnumerable<string>>, SchedulerError>.Success(
+                new Dictionary<string, IEnumerable<string>>()));
+
+        var outputPath = "test_output_overwrite";
+        var outputFile = Path.Combine(outputPath, "out.txt");
+        
+        // Crie o diretório e arquivo com conteúdo antigo para simular que ele já existe
+        Directory.CreateDirectory(outputPath);
+        await File.WriteAllTextAsync(outputFile, "Old content that should be overwritten.");
 
         var schedulePlans = new List<SchedulePlan>
         {
@@ -105,14 +117,14 @@ public class ScheduleProcessorTests
             Assert.True(result.IsSuccess);
             Assert.False(result.IsError);
 
-            var outputContent = await File.ReadAllTextAsync(outputPath);
+            var outputContent = await File.ReadAllTextAsync(outputFile);
             Assert.Contains("New content", outputContent);
             Assert.DoesNotContain("Old content", outputContent);
         }
         finally
         {
             // Clean up
-            if (File.Exists(outputPath)) File.Delete(outputPath);
+            if (Directory.Exists(outputPath)) Directory.Delete(outputPath, true);
         }
     }
 
@@ -133,8 +145,9 @@ public class ScheduleProcessorTests
         {
             new("S1", new List<Operation>()), new("S2", new List<Operation>()) // Este plano não deve ser processado
         };
-        var outputPath = "test_output_set_schedule_fail.txt";
-        if (File.Exists(outputPath)) File.Delete(outputPath);
+        var outputPath = "test_output_set_schedule_fail";
+        var outputFile = Path.Combine(outputPath, "out.txt");
+        if (Directory.Exists(outputPath)) Directory.Delete(outputPath, true);
 
         var processor = new ScheduleProcessor(mockScheduler.Object);
 
@@ -149,8 +162,8 @@ public class ScheduleProcessorTests
             Assert.Contains("Failed to set schedule for plan S1", result.GetErrorOrThrow().ToString());
 
             // Verifica que o arquivo de saída está vazio ou não contém resultados (não deve ter sido escrito nada relevante)
-            Assert.True(File.Exists(outputPath)); // O arquivo é criado, mas não deve ter nada relevante
-            var outputContent = await File.ReadAllTextAsync(outputPath);
+            Assert.True(File.Exists(outputFile)); // O arquivo é criado, mas não deve ter nada relevante
+            var outputContent = await File.ReadAllTextAsync(outputFile);
             Assert.Empty(outputContent); // Nenhuma saída deve ser escrita
 
             // Verifica que CheckIfSerializableAsync e ResetScheduler nunca foram chamados
@@ -159,7 +172,7 @@ public class ScheduleProcessorTests
         }
         finally
         {
-            if (File.Exists(outputPath)) File.Delete(outputPath);
+            if (Directory.Exists(outputPath)) Directory.Delete(outputPath, true);
         }
     }
 
@@ -180,8 +193,9 @@ public class ScheduleProcessorTests
         {
             new("S1", new List<Operation>()), new("S2", new List<Operation>()) // Este plano não deve ser processado
         };
-        var outputPath = "test_output_serializable_fail.txt";
-        if (File.Exists(outputPath)) File.Delete(outputPath);
+        var outputPath = "test_output_serializable_fail";
+        var outputFile = Path.Combine(outputPath, "out.txt");
+        if (Directory.Exists(outputPath)) Directory.Delete(outputPath, true);
 
         var processor = new ScheduleProcessor(mockScheduler.Object);
 
@@ -195,8 +209,8 @@ public class ScheduleProcessorTests
             Assert.False(result.IsSuccess);
             Assert.Contains("Failed to check serializability for plan S1", result.GetErrorOrThrow().ToString());
 
-            Assert.True(File.Exists(outputPath));
-            var outputContent = await File.ReadAllTextAsync(outputPath);
+            Assert.True(File.Exists(outputFile));
+            var outputContent = await File.ReadAllTextAsync(outputFile);
             Assert.Empty(outputContent); // Nenhuma saída deve ser escrita
 
             mockScheduler.Verify(s => s.ResetScheduler(), Times.Never());
@@ -207,7 +221,7 @@ public class ScheduleProcessorTests
         }
         finally
         {
-            if (File.Exists(outputPath)) File.Delete(outputPath);
+            if (Directory.Exists(outputPath)) Directory.Delete(outputPath, true);
         }
     }
 
@@ -229,8 +243,9 @@ public class ScheduleProcessorTests
         {
             new("S1", new List<Operation>()), new("S2", new List<Operation>()) // Este plano não deve ser processado
         };
-        var outputPath = "test_output_reset_fail.txt";
-        if (File.Exists(outputPath)) File.Delete(outputPath);
+        var outputPath = "test_output_reset_fail";
+        var outputFile = Path.Combine(outputPath, "out.txt");
+        if (Directory.Exists(outputPath)) Directory.Delete(outputPath, true);
 
         var processor = new ScheduleProcessor(mockScheduler.Object);
 
@@ -244,8 +259,8 @@ public class ScheduleProcessorTests
             Assert.False(result.IsSuccess);
             Assert.Contains("Failed to reset scheduler after processing plan S1", result.GetErrorOrThrow().ToString());
 
-            Assert.True(File.Exists(outputPath));
-            var outputContent = await File.ReadAllTextAsync(outputPath);
+            Assert.True(File.Exists(outputFile));
+            var outputContent = await File.ReadAllTextAsync(outputFile);
             // Deve conter a saída do primeiro plano, pois a falha de reset ocorre DEPOIS de escrever a saída.
             Assert.Contains("Some result", outputContent);
 
@@ -255,7 +270,7 @@ public class ScheduleProcessorTests
         }
         finally
         {
-            if (File.Exists(outputPath)) File.Delete(outputPath);
+            if (Directory.Exists(outputPath)) Directory.Delete(outputPath, true);
         }
     }
 
@@ -269,10 +284,15 @@ public class ScheduleProcessorTests
         mockScheduler.Setup(s => s.CheckIfSerializableAsync()).Verifiable(Times.Never());
         mockScheduler.Setup(s => s.ResetScheduler()).Verifiable(Times.Never());
 
+        mockScheduler.Setup(s => s.GetOperationsForDataRecords())
+            .ReturnsAsync(Result<Dictionary<string, IEnumerable<string>>, SchedulerError>.Success(
+                new Dictionary<string, IEnumerable<string>>()));
+
         var schedulePlans = new List<SchedulePlan>(); // Lista vazia
 
-        var outputPath = "test_output_empty_plans.txt";
-        if (File.Exists(outputPath)) File.Delete(outputPath);
+        var outputPath = "test_output_empty_plans";
+        var outputFile = Path.Combine(outputPath, "out.txt");
+        if (Directory.Exists(outputPath)) Directory.Delete(outputPath, true);
 
         var processor = new ScheduleProcessor(mockScheduler.Object);
 
@@ -289,13 +309,13 @@ public class ScheduleProcessorTests
             mockScheduler.VerifyNoOtherCalls();
 
             // Verifique que o arquivo foi criado, mas está vazio
-            Assert.True(File.Exists(outputPath));
-            var outputContent = await File.ReadAllTextAsync(outputPath);
+            Assert.True(File.Exists(outputFile));
+            var outputContent = await File.ReadAllTextAsync(outputFile);
             Assert.Empty(outputContent);
         }
         finally
         {
-            if (File.Exists(outputPath)) File.Delete(outputPath);
+            if (Directory.Exists(outputPath)) Directory.Delete(outputPath, true);
         }
     }
 }
